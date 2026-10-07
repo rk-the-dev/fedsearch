@@ -212,3 +212,11 @@ var nonWord = regexp.MustCompile(`[^a-z0-9.]+`)
 func Normalize(q string) string {
 	return strings.Trim(nonWord.ReplaceAllString(strings.ToLower(q), " "), " .")
 }
+
+// APIKey returns the configured Anthropic key (for the agent mode), or "".
+func (t *Translator) APIKey() string {
+	if a, ok := t.LLM.(*Anthropic); ok {
+		return a.APIKey
+	}
+	return ""
+}

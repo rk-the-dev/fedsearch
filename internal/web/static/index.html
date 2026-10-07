@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FedSearch console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect y=%223%22 width=%2210%22 height=%224%22 fill=%22%232F6FA3%22/%3E%3Crect x=%226%22 y=%229%22 width=%2210%22 height=%224%22 fill=%22%23E39B0B%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..750&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="wordmark">FedSearch</span>
+    <span class="tagline">One question across every tier, nothing copied</span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" data-view="catalog" aria-selected="true">Catalog</button>
+    <button role="tab" data-view="query" aria-selected="false">Query</button>
+    <button role="tab" data-view="investigate" aria-selected="false">Investigate</button>
+    <button role="tab" data-view="audit" aria-selected="false">Audit</button>
+  </nav>
+  <div class="status" id="status" aria-live="polite"></div>
+</header>
+
+<main>
+  <section id="view-catalog" class="view" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h1>Where the data lives</h1>
+        <p class="lede">Each dataset has one logical schema and several physical homes. The planner reads this map to decide which tier answers which part of a time range.</p>
+      </div>
+      <button class="secondary" id="refresh">Refresh catalog</button>
+    </div>
+    <div id="refresh-report"></div>
+    <div id="catalog"></div>
+  </section>
+
+  <section id="view-query" class="view" role="tabpanel" hidden>
+    <div class="ask">
+      <label for="question" class="sr-only">Question</label>
+      <input id="question" type="text" autocomplete="off" placeholder="Ask in plain language, e.g. Show failed logins for svc_backup in the last 6 months">
+      <button id="translate">Translate</button>
+    </div>
+    <div class="chips" id="suggestions" aria-label="Example questions"></div>
+
+    <div class="qgrid">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Query</h2>
+          <span id="nl-source" class="badge" hidden></span>
+        </div>
+        <p id="nl-explain" class="explain" hidden></p>
+        <div id="nl-attempts"></div>
+        <label for="ir" class="sr-only">FedSearch IR</label>
+        <textarea id="ir" spellcheck="false" rows="16" placeholder='{"dataset": "authentication", "time": {"from": "now-7d"}}'></textarea>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="naive"> Naive mode: let every tier answer the overlap window</label>
+          <button id="plan">Plan</button>
+        </div>
+        <div id="ir-errors"></div>
+      </div>
+      <div class="panel" id="plan-panel">
+        <div class="panel-head"><h2>Plan</h2></div>
+        <div id="plan-out"><p class="empty">Plan a query to see which tiers and partitions it reads, and what it costs, before anything runs.</p></div>
+      </div>
+    </div>
+
+    <div id="results"></div>
+  </section>
+
+  <section id="view-investigate" class="view" role="tabpanel" hidden>
+    <div class="view-head">
+      <div>
+        <h1>Investigate an indicator</h1>
+        <p class="lede">Starts from one IP and pivots through the same governed tools an AI agent gets: every step is audited, budgeted and cited.</p>
+      </div>
+    </div>
+    <form class="inv-form" id="inv-form">
+      <label>Indicator IP <input id="ioc" value="185.220.101.47" required></label>
+      <label>Window
+        <select id="window">
+          <option value="now-30d">Last 30 days</option>
+          <option value="now-90d">Last 90 days</option>
+          <option value="now-180d" selected>Last 180 days</option>
+        </select>
+      </label>
+      <fieldset class="mode">
+        <legend>Driver</legend>
+        <label><input type="radio" name="mode" value="playbook" checked> Playbook</label>
+        <label><input type="radio" name="mode" value="agent" id="mode-agent"> LLM agent</label>
+      </fieldset>
+      <button type="submit">Investigate</button>
+    </form>
+    <div id="inv-out"></div>
+  </section>
+
+  <section id="view-audit" class="view" role="tabpanel" hidden>
+    <div class="view-head">
+      <div>
+        <h1>Audit trail</h1>
+        <p class="lede">Every question, plan, query and tool call, by analysts and agents alike.</p>
+      </div>
+      <button class="secondary" id="audit-reload">Reload</button>
+    </div>
+    <div id="audit"></div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,127 +1,503 @@
 [
   {
     "question": "Show failed logins for svc_backup in the last 6 months",
-    "aliases": ["failed logins for svc_backup", "svc_backup failed logins last 6 months"],
+    "aliases": [
+      "failed logins for svc_backup",
+      "svc_backup failed logins last 6 months"
+    ],
     "demo": true,
     "explanation": "Authentication events for user svc_backup with status Failure (status_id 2) over the last 180 days, across both tiers.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-180d", "to": "now"},
-      "where": {"and": [{"cmp": {"field": "user.name", "op": "eq", "value": "svc_backup"}}, {"cmp": {"field": "status_id", "op": "eq", "value": 2}}]},
-      "select": ["time", "user.name", "src_endpoint.ip", "dst_endpoint.hostname", "status_id", "auth_protocol", "http_request.user_agent"],
-      "limit": 200}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-180d",
+        "to": "now"
+      },
+      "where": {
+        "and": [
+          {
+            "cmp": {
+              "field": "user.name",
+              "op": "eq",
+              "value": "svc_backup"
+            }
+          },
+          {
+            "cmp": {
+              "field": "status_id",
+              "op": "eq",
+              "value": 2
+            }
+          }
+        ]
+      },
+      "select": [
+        "time",
+        "user.name",
+        "src_endpoint.ip",
+        "dst_endpoint.hostname",
+        "status_id",
+        "auth_protocol",
+        "http_request.user_agent"
+      ],
+      "limit": 200
+    }
   },
   {
     "question": "How many failed logins did svc_backup have in the last 6 months?",
-    "aliases": ["count failed logins for svc_backup"],
+    "aliases": [
+      "count failed logins for svc_backup"
+    ],
     "demo": true,
     "explanation": "Counts svc_backup authentication failures over 180 days; the overlap window between tiers is counted once.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-180d"},
-      "where": {"and": [{"cmp": {"field": "user.name", "op": "eq", "value": "svc_backup"}}, {"cmp": {"field": "status_id", "op": "eq", "value": 2}}]},
-      "aggs": [{"fn": "count", "as": "failures"}]}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-180d"
+      },
+      "where": {
+        "and": [
+          {
+            "cmp": {
+              "field": "user.name",
+              "op": "eq",
+              "value": "svc_backup"
+            }
+          },
+          {
+            "cmp": {
+              "field": "status_id",
+              "op": "eq",
+              "value": 2
+            }
+          }
+        ]
+      },
+      "aggs": [
+        {
+          "fn": "count",
+          "as": "failures"
+        }
+      ]
+    }
   },
   {
     "question": "Which accounts had the most failed logins in the last 30 days?",
     "explanation": "Groups authentication failures by user name and ranks by count.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-30d"},
-      "where": {"cmp": {"field": "status_id", "op": "eq", "value": 2}},
-      "group_by": ["user.name"], "aggs": [{"fn": "count", "as": "failures"}], "order": {"by": "failures", "desc": true}, "limit": 10}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-30d"
+      },
+      "where": {
+        "cmp": {
+          "field": "status_id",
+          "op": "eq",
+          "value": 2
+        }
+      },
+      "group_by": [
+        "user.name"
+      ],
+      "aggs": [
+        {
+          "fn": "count",
+          "as": "failures"
+        }
+      ],
+      "order": {
+        "by": "failures",
+        "desc": true
+      },
+      "limit": 10
+    }
   },
   {
     "question": "Top source IPs with failed logins in the last 6 months",
     "explanation": "Groups authentication failures by source IP and ranks by count.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-180d"},
-      "where": {"cmp": {"field": "status_id", "op": "eq", "value": 2}},
-      "group_by": ["src_endpoint.ip"], "aggs": [{"fn": "count", "as": "failures"}], "order": {"by": "failures", "desc": true}, "limit": 10}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-180d"
+      },
+      "where": {
+        "cmp": {
+          "field": "status_id",
+          "op": "eq",
+          "value": 2
+        }
+      },
+      "group_by": [
+        "src_endpoint.ip"
+      ],
+      "aggs": [
+        {
+          "fn": "count",
+          "as": "failures"
+        }
+      ],
+      "order": {
+        "by": "failures",
+        "desc": true
+      },
+      "limit": 10
+    }
   },
   {
     "question": "Who logged in to db-prod-01 in the last 60 days and from which device?",
-    "aliases": ["logins to db-prod-01 with device owner"],
+    "aliases": [
+      "logins to db-prod-01 with device owner"
+    ],
     "demo": true,
     "explanation": "Authentication events targeting db-prod-01, with the source IP resolved to the host and owner that held it at event time.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-60d"},
-      "where": {"cmp": {"field": "dst_endpoint.hostname", "op": "eq", "value": "db-prod-01"}},
-      "select": ["time", "user.name", "src_endpoint.ip", "dst_endpoint.hostname", "status_id", "auth_protocol"],
-      "enrich": ["src_endpoint.ip"], "limit": 500}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-60d"
+      },
+      "where": {
+        "cmp": {
+          "field": "dst_endpoint.hostname",
+          "op": "eq",
+          "value": "db-prod-01"
+        }
+      },
+      "select": [
+        "time",
+        "user.name",
+        "src_endpoint.ip",
+        "dst_endpoint.hostname",
+        "status_id",
+        "auth_protocol"
+      ],
+      "enrich": [
+        "src_endpoint.ip"
+      ],
+      "limit": 200
+    }
   },
   {
     "question": "Where did svc_backup log in from in the last 6 months?",
     "explanation": "All svc_backup logins with source IPs enriched to the device and owner as of each event.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-180d"},
-      "where": {"cmp": {"field": "user.name", "op": "eq", "value": "svc_backup"}},
-      "select": ["time", "user.name", "src_endpoint.ip", "dst_endpoint.hostname", "status_id"],
-      "enrich": ["src_endpoint.ip"], "limit": 500}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-180d"
+      },
+      "where": {
+        "cmp": {
+          "field": "user.name",
+          "op": "eq",
+          "value": "svc_backup"
+        }
+      },
+      "select": [
+        "time",
+        "user.name",
+        "src_endpoint.ip",
+        "dst_endpoint.hostname",
+        "status_id"
+      ],
+      "enrich": [
+        "src_endpoint.ip"
+      ],
+      "limit": 500,
+      "order": {
+        "by": "time",
+        "desc": true
+      }
+    },
+    "demo": true
   },
   {
     "question": "Show all network activity involving 185.220.101.47 in the last 6 months",
-    "aliases": ["traffic to or from 185.220.101.47"],
+    "aliases": [
+      "traffic to or from 185.220.101.47"
+    ],
     "demo": true,
     "explanation": "Network events where 185.220.101.47 is the source or the destination, across both tiers.",
-    "ir": {"dataset": "network_activity", "time": {"from": "now-180d"},
-      "where": {"or": [{"cmp": {"field": "src_endpoint.ip", "op": "eq", "value": "185.220.101.47"}}, {"cmp": {"field": "dst_endpoint.ip", "op": "eq", "value": "185.220.101.47"}}]},
-      "enrich": ["src_endpoint.ip", "dst_endpoint.ip"], "limit": 1000}
+    "ir": {
+      "dataset": "network_activity",
+      "time": {
+        "from": "now-180d"
+      },
+      "where": {
+        "or": [
+          {
+            "cmp": {
+              "field": "src_endpoint.ip",
+              "op": "eq",
+              "value": "185.220.101.47"
+            }
+          },
+          {
+            "cmp": {
+              "field": "dst_endpoint.ip",
+              "op": "eq",
+              "value": "185.220.101.47"
+            }
+          }
+        ]
+      },
+      "enrich": [
+        "src_endpoint.ip",
+        "dst_endpoint.ip"
+      ],
+      "limit": 1000
+    }
   },
   {
     "question": "How much data was sent to 185.220.101.47 in the last 6 months, by source?",
-    "aliases": ["data sent to 185.220.101.47"],
+    "aliases": [
+      "data sent to 185.220.101.47"
+    ],
     "demo": true,
     "explanation": "Sums outbound bytes to 185.220.101.47 per source IP.",
-    "ir": {"dataset": "network_activity", "time": {"from": "now-180d"},
-      "where": {"cmp": {"field": "dst_endpoint.ip", "op": "eq", "value": "185.220.101.47"}},
-      "group_by": ["src_endpoint.ip"], "aggs": [{"fn": "sum", "field": "traffic.bytes_out", "as": "bytes_out"}, {"fn": "count", "as": "flows"}],
-      "order": {"by": "bytes_out", "desc": true}, "limit": 10}
+    "ir": {
+      "dataset": "network_activity",
+      "time": {
+        "from": "now-180d"
+      },
+      "where": {
+        "cmp": {
+          "field": "dst_endpoint.ip",
+          "op": "eq",
+          "value": "185.220.101.47"
+        }
+      },
+      "group_by": [
+        "src_endpoint.ip"
+      ],
+      "aggs": [
+        {
+          "fn": "sum",
+          "field": "traffic.bytes_out",
+          "as": "bytes_out"
+        },
+        {
+          "fn": "count",
+          "as": "flows"
+        }
+      ],
+      "order": {
+        "by": "bytes_out",
+        "desc": true
+      },
+      "limit": 10
+    }
   },
   {
     "question": "Blocked connections by destination port in the last 90 days",
     "explanation": "Counts denied network connections (action_id 2) per destination port.",
-    "ir": {"dataset": "network_activity", "time": {"from": "now-90d"},
-      "where": {"cmp": {"field": "action_id", "op": "eq", "value": 2}},
-      "group_by": ["dst_endpoint.port"], "aggs": [{"fn": "count", "as": "blocked"}], "order": {"by": "blocked", "desc": true}, "limit": 20}
+    "ir": {
+      "dataset": "network_activity",
+      "time": {
+        "from": "now-90d"
+      },
+      "where": {
+        "cmp": {
+          "field": "action_id",
+          "op": "eq",
+          "value": 2
+        }
+      },
+      "group_by": [
+        "dst_endpoint.port"
+      ],
+      "aggs": [
+        {
+          "fn": "count",
+          "as": "blocked"
+        }
+      ],
+      "order": {
+        "by": "blocked",
+        "desc": true
+      },
+      "limit": 20
+    }
   },
   {
     "question": "Which hosts sent the most data out in the last 30 days?",
     "explanation": "Sums outbound bytes per source IP and ranks the largest senders.",
-    "ir": {"dataset": "network_activity", "time": {"from": "now-30d"},
-      "group_by": ["src_endpoint.ip"], "aggs": [{"fn": "sum", "field": "traffic.bytes_out", "as": "bytes_out"}],
-      "order": {"by": "bytes_out", "desc": true}, "limit": 10}
+    "ir": {
+      "dataset": "network_activity",
+      "time": {
+        "from": "now-30d"
+      },
+      "group_by": [
+        "src_endpoint.ip"
+      ],
+      "aggs": [
+        {
+          "fn": "sum",
+          "field": "traffic.bytes_out",
+          "as": "bytes_out"
+        }
+      ],
+      "order": {
+        "by": "bytes_out",
+        "desc": true
+      },
+      "limit": 10
+    }
   },
   {
     "question": "Failed logins from outside the corporate network in the last 30 days",
     "explanation": "Authentication failures whose source IP is not in 10.0.0.0/8. CIDR is filtered after fetch where an engine cannot evaluate it.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-30d"},
-      "where": {"and": [{"cmp": {"field": "status_id", "op": "eq", "value": 2}}, {"not": {"cmp": {"field": "src_endpoint.ip", "op": "cidr", "value": "10.0.0.0/8"}}}]},
-      "limit": 200}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-30d"
+      },
+      "where": {
+        "and": [
+          {
+            "cmp": {
+              "field": "status_id",
+              "op": "eq",
+              "value": 2
+            }
+          },
+          {
+            "not": {
+              "cmp": {
+                "field": "src_endpoint.ip",
+                "op": "cidr",
+                "value": "10.0.0.0/8"
+              }
+            }
+          }
+        ]
+      },
+      "limit": 200
+    }
   },
   {
     "question": "Which authentication protocols were used in the last 7 days?",
     "explanation": "Counts authentication events per protocol.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-7d"},
-      "group_by": ["auth_protocol"], "aggs": [{"fn": "count", "as": "logins"}], "order": {"by": "logins", "desc": true}, "limit": 20}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-7d"
+      },
+      "group_by": [
+        "auth_protocol"
+      ],
+      "aggs": [
+        {
+          "fn": "count",
+          "as": "logins"
+        }
+      ],
+      "order": {
+        "by": "logins",
+        "desc": true
+      },
+      "limit": 20
+    }
   },
   {
     "question": "How many distinct source IPs did svc_backup use in the last 6 months?",
     "explanation": "Counts distinct source IPs across svc_backup authentication events.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-180d"},
-      "where": {"cmp": {"field": "user.name", "op": "eq", "value": "svc_backup"}},
-      "aggs": [{"fn": "count_distinct", "field": "src_endpoint.ip", "as": "source_ips"}]}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-180d"
+      },
+      "where": {
+        "cmp": {
+          "field": "user.name",
+          "op": "eq",
+          "value": "svc_backup"
+        }
+      },
+      "aggs": [
+        {
+          "fn": "count_distinct",
+          "field": "src_endpoint.ip",
+          "as": "source_ips"
+        }
+      ]
+    }
   },
   {
     "question": "Show traffic from 10.20.6.88 in the last 2 weeks",
     "explanation": "Network events from 10.20.6.88 with the device and owner as of each event.",
-    "ir": {"dataset": "network_activity", "time": {"from": "now-14d"},
-      "where": {"cmp": {"field": "src_endpoint.ip", "op": "eq", "value": "10.20.6.88"}},
-      "enrich": ["src_endpoint.ip"], "limit": 500}
+    "ir": {
+      "dataset": "network_activity",
+      "time": {
+        "from": "now-14d"
+      },
+      "where": {
+        "cmp": {
+          "field": "src_endpoint.ip",
+          "op": "eq",
+          "value": "10.20.6.88"
+        }
+      },
+      "enrich": [
+        "src_endpoint.ip"
+      ],
+      "limit": 500
+    }
   },
   {
     "question": "Who connected to the database port 5432 in the last 60 days?",
     "explanation": "Counts connections to port 5432 per source IP.",
-    "ir": {"dataset": "network_activity", "time": {"from": "now-60d"},
-      "where": {"cmp": {"field": "dst_endpoint.port", "op": "eq", "value": 5432}},
-      "group_by": ["src_endpoint.ip"], "aggs": [{"fn": "count", "as": "connections"}, {"fn": "sum", "field": "traffic.bytes_in", "as": "bytes_in"}],
-      "order": {"by": "bytes_in", "desc": true}, "limit": 10}
+    "ir": {
+      "dataset": "network_activity",
+      "time": {
+        "from": "now-60d"
+      },
+      "where": {
+        "cmp": {
+          "field": "dst_endpoint.port",
+          "op": "eq",
+          "value": 5432
+        }
+      },
+      "group_by": [
+        "src_endpoint.ip"
+      ],
+      "aggs": [
+        {
+          "fn": "count",
+          "as": "connections"
+        },
+        {
+          "fn": "sum",
+          "field": "traffic.bytes_in",
+          "as": "bytes_in"
+        }
+      ],
+      "order": {
+        "by": "bytes_in",
+        "desc": true
+      },
+      "limit": 10
+    }
   },
   {
     "question": "Failed logins in the last 24 hours",
     "explanation": "Authentication failures over the last day, newest first.",
-    "ir": {"dataset": "authentication", "time": {"from": "now-1d"},
-      "where": {"cmp": {"field": "status_id", "op": "eq", "value": 2}}, "order": {"by": "time", "desc": true}, "limit": 100}
+    "ir": {
+      "dataset": "authentication",
+      "time": {
+        "from": "now-1d"
+      },
+      "where": {
+        "cmp": {
+          "field": "status_id",
+          "op": "eq",
+          "value": 2
+        }
+      },
+      "order": {
+        "by": "time",
+        "desc": true
+      },
+      "limit": 100
+    }
   }
 ]
