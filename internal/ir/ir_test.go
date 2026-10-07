@@ -85,10 +85,10 @@ func TestEval(t *testing.T) {
 	row := map[string]any{"src_endpoint.ip": "10.20.4.17", "status_id": int64(2), "user.name": "svc_backup"}
 	get := func(p string) (any, bool) { v, ok := row[p]; return v, ok }
 	cases := map[string]bool{
-		`{"cmp":{"field":"src_endpoint.ip","op":"cidr","value":"10.20.0.0/16"}}`: true,
-		`{"cmp":{"field":"src_endpoint.ip","op":"cidr","value":"10.30.0.0/16"}}`: false,
+		`{"cmp":{"field":"src_endpoint.ip","op":"cidr","value":"10.20.0.0/16"}}`:                                                  true,
+		`{"cmp":{"field":"src_endpoint.ip","op":"cidr","value":"10.30.0.0/16"}}`:                                                  false,
 		`{"and":[{"cmp":{"field":"status_id","op":"gte","value":2}},{"cmp":{"field":"user.name","op":"prefix","value":"svc_"}}]}`: true,
-		`{"not":{"cmp":{"field":"user.name","op":"in","value":["a","svc_backup"]}}}`:                                               false,
+		`{"not":{"cmp":{"field":"user.name","op":"in","value":["a","svc_backup"]}}}`:                                              false,
 		`{"cmp":{"field":"missing","op":"exists"}}`:                                                                               false,
 	}
 	for s, want := range cases {

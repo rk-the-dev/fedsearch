@@ -88,10 +88,12 @@ type Order struct {
 
 // Helpers for building queries in code and tests.
 
-func And(e ...*Expr) *Expr                   { return &Expr{And: e} }
-func Or(e ...*Expr) *Expr                    { return &Expr{Or: e} }
-func Not(e *Expr) *Expr                      { return &Expr{Not: e} }
-func C(field string, op Op, value any) *Expr { return &Expr{Cmp: &Cmp{Field: field, Op: op, Value: value}} }
+func And(e ...*Expr) *Expr { return &Expr{And: e} }
+func Or(e ...*Expr) *Expr  { return &Expr{Or: e} }
+func Not(e *Expr) *Expr    { return &Expr{Not: e} }
+func C(field string, op Op, value any) *Expr {
+	return &Expr{Cmp: &Cmp{Field: field, Op: op, Value: value}}
+}
 
 // Walk visits every comparison in the tree.
 func (e *Expr) Walk(fn func(*Cmp)) {

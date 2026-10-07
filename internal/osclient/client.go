@@ -29,7 +29,9 @@ type Error struct {
 	Body   string
 }
 
-func (e *Error) Error() string { return fmt.Sprintf("opensearch %d: %s", e.Status, truncate(e.Body, 400)) }
+func (e *Error) Error() string {
+	return fmt.Sprintf("opensearch %d: %s", e.Status, truncate(e.Body, 400))
+}
 
 func (c *Client) Do(ctx context.Context, method, path string, body any, out any) error {
 	var rdr io.Reader
