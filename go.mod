@@ -9,6 +9,8 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.65.0
+	github.com/lib/pq v1.10.9
+	github.com/marcboeker/go-duckdb v1.8.5
 	github.com/parquet-go/parquet-go v0.25.1
 )
 
@@ -36,8 +38,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
-	github.com/lib/pq v1.10.9 // indirect
-	github.com/marcboeker/go-duckdb v1.8.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect

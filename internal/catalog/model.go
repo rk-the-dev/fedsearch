@@ -162,6 +162,7 @@ type Partition struct {
 	RowGroups   []RowGroup       `json:"row_groups,omitempty"`
 	ETag        string           `json:"etag,omitempty"`
 	Schema      []PhysicalField  `json:"schema,omitempty"`
+	Stale       bool             `json:"stale,omitempty"` // listed live, not yet in the catalog: stats estimated
 }
 
 type RowGroup struct {
