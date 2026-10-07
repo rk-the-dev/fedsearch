@@ -2,7 +2,7 @@
 # Day 1 acceptance checks against the running stack. Every number printed
 # here should match out/ground_truth.json.
 set -eu
-DC="docker compose -f deploy/docker-compose.yml"
+DC="docker compose --progress quiet -f deploy/docker-compose.yml"
 OS=http://localhost:9200
 
 echo "== hot tier (OpenSearch) =="
@@ -14,7 +14,7 @@ curl -fsS "$OS/ocsf-network_activity-*/_count" -H 'Content-Type: application/jso
   -d '{"query":{"term":{"dst_endpoint_ip":"185.220.101.47"}}}' | sed 's/.*"count":\([0-9]*\).*/\1/'; echo
 
 echo "== cold tier (MinIO) =="
-$DC run --rm -T --entrypoint /bin/sh minio-init -c '
+$DC run --rm -T --quiet-pull --entrypoint /bin/sh minio-init -c '
   mc alias set s3 http://minio:9000 fedsearch fedsearch-secret >/dev/null
   for ds in authentication network_activity; do
     echo "$ds parquet files: $(mc ls --recursive s3/telemetry-archive/ocsf/$ds/ | wc -l)"
