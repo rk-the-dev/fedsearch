@@ -20,7 +20,6 @@ type S3 struct {
 	client *s3.Client
 	bucket string
 	base   string // prefix inside the bucket, no leading/trailing slash
-	ctx    context.Context
 }
 
 func newS3(root string, c config.S3) (*S3, error) {

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted for POC |
+| **Status** | Implemented (see §20 for as-built notes) |
 | **Author** | RK |
 | **Scope** | Laptop-scale POC of federated search over security telemetry, modeled on DataBahn's Search / Reef / Lumen / MCP Hub |
 | **Audience** | Engineers reviewing the design; DataBahn federated search team |
@@ -681,3 +681,21 @@ fedsearch/
 | M11 | MCP + audit | Agent investigation with citations; injection flagged |
 | M12 | API + UI | All five demo acts clickable |
 | M13 | Demo, benchmarks, README | `make demo` idempotent; `docs/benchmarks.md` published |
+
+---
+
+## 20. Implementation notes (as built)
+
+The POC implements this design end to end. These are the places where the build deliberately differs from the text above, and why.
+
+| Topic | Design said | Built | Why |
+|---|---|---|---|
+| Compilers | `compiler/duckdb`, `compiler/opensearch` | One `internal/compiler` package with `sql.go` and `dsl.go` | They share the input type, binding lookup and pushability rules; two files keep that in one place |
+| `count_distinct` | HLL sketch | Exact value set per group, capped at 10,000 values, then marked approximate | Engines return distinct values natively (`list(DISTINCT …)`, `terms`); exact is better while it fits, and the cap keeps memory bounded |
+| Lite mode | Not in the design | `deploy/lite.json`: hot tier as daily NDJSON read by DuckDB, context from CSV | The whole system, including e2e tests and the demo, runs without Docker; the OpenSearch path keeps its own adapter and protocol tests |
+| Cold "actual bytes" | Engine-reported bytes | Computed from Parquet footer metadata after row-group pruning on time | Embedded DuckDB does not report bytes read for local files; the computation reflects the same pruning DuckDB applies, and the estimate prices whole partitions as an upper bound |
+| Row streaming | k-way merge streamed to the client | Slices stream progress and row previews over SSE; the final k-way merge, dedup and enrichment run when all slices finish | Global time order and a global limit need every slice; previews keep the UI live in the meantime |
+| Agent auth (UI) | API key per principal | The console's investigation runs as the first configured agent principal; MCP clients authenticate with `FEDSEARCH_AGENT_KEY` | Single-user POC |
+| Investigation | LLM agent | Deterministic playbook by default, LLM agent when an API key is configured | The demo must be reproducible; both drive the same governed tools |
+
+Everything in §15 (failure modes) and §16 (testing) is implemented; see `internal/e2e` for the ground-truth tests and `docs/benchmarks.md` for the measured claims.
