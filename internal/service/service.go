@@ -21,6 +21,7 @@ import (
 	"github.com/rksurwase/fedsearch/internal/enrich"
 	"github.com/rksurwase/fedsearch/internal/exec"
 	"github.com/rksurwase/fedsearch/internal/ir"
+	"github.com/rksurwase/fedsearch/internal/nl"
 	"github.com/rksurwase/fedsearch/internal/planner"
 	"github.com/rksurwase/fedsearch/internal/schema"
 )
@@ -32,6 +33,7 @@ type Service struct {
 	Ledger   *cost.Ledger
 	Enricher *enrich.Enricher
 	Audit    *audit.Log
+	NL       *nl.Translator
 	Now      func() time.Time
 
 	mu  sync.RWMutex
@@ -82,6 +84,13 @@ func New(ctx context.Context, cfg *config.Config) (*Service, error) {
 	if s.Audit, err = audit.Open(filepath.Join(cfg.DataDir, "audit.jsonl")); err != nil {
 		return nil, err
 	}
+	var golden *nl.Golden
+	if cfg.LLM.Golden != "" {
+		if golden, err = nl.LoadGolden(cfg.LLM.Golden); err != nil {
+			return nil, fmt.Errorf("golden NL set: %w", err)
+		}
+	}
+	s.NL = nl.New(cfg.LLM, golden, s.Catalog, s.Prepare)
 	s.Jobs = exec.NewManager(cfg, s.Engines, s.Enricher, s.Ledger, s)
 	s.Jobs.OnFinish = s.onFinish
 	return s, nil
@@ -236,4 +245,17 @@ func (s *Service) Run(ctx context.Context, q *ir.Query, o SubmitOptions) (*exec.
 		<-j.Done()
 	}
 	return j, nil
+}
+
+// Ask translates a question into IR and records it in the audit log.
+func (s *Service) Ask(ctx context.Context, question, principal, surface string) (*nl.Translation, error) {
+	tr, err := s.NL.Translate(ctx, question)
+	rec := audit.Record{Principal: principal, Surface: surface, Action: "nl", Detail: question}
+	if err != nil {
+		rec.Outcome = "error: " + err.Error()
+	} else {
+		rec.Outcome, rec.QueryHash, rec.Dataset, rec.LatencyMS = tr.Source, ir.Hash(tr.Query), tr.Query.Dataset, tr.LatencyMS
+	}
+	s.Audit.Write(rec)
+	return tr, err
 }

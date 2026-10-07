@@ -119,3 +119,7 @@ func (p *Postgres) Assignments(ctx context.Context, ips []string) (map[string][]
 	}
 	return out, rows.Err()
 }
+
+func configFor(dsn string) config.ContextStore {
+	return config.ContextStore{Kind: "postgres", DSN: dsn}
+}

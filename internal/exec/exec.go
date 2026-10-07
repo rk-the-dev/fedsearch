@@ -98,11 +98,23 @@ type Job struct {
 	reason  string
 }
 
+// JobView is an immutable snapshot of a job.
+type JobView struct {
+	ID        string        `json:"id"`
+	Principal string        `json:"principal"`
+	State     State         `json:"state"`
+	Plan      *planner.Plan `json:"plan"`
+	Decision  cost.Decision `json:"decision"`
+	CreatedAt time.Time     `json:"created_at"`
+	Finished  time.Time     `json:"finished_at,omitempty"`
+	Result    *Result       `json:"result,omitempty"`
+}
+
 // Snapshot returns a copy safe to serialize.
-func (j *Job) Snapshot() Job {
+func (j *Job) Snapshot() JobView {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	return Job{ID: j.ID, Principal: j.Principal, State: j.State, Plan: j.Plan, Decision: j.Decision,
+	return JobView{ID: j.ID, Principal: j.Principal, State: j.State, Plan: j.Plan, Decision: j.Decision,
 		CreatedAt: j.CreatedAt, Finished: j.Finished, Result: j.Result}
 }
 

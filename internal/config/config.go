@@ -69,6 +69,7 @@ type LLM struct {
 	APIKeyEnv string `json:"api_key_env"`
 	BaseURL   string `json:"base_url"`
 	Mode      string `json:"mode"` // llm_first | cache_first | cache_only
+	Golden    string `json:"golden"`
 }
 
 type Server struct {
@@ -120,6 +121,7 @@ func Load(path string) (*Config, error) {
 		c.Sources[i].Root = abs(c.Sources[i].Root)
 	}
 	c.Context.Dir = abs(c.Context.Dir)
+	c.LLM.Golden = abs(c.LLM.Golden)
 	if c.Budget.MaxPerQueryUSD == 0 {
 		c.Budget = Budget{ConfirmAboveUSD: 0.01, MaxPerQueryUSD: 1, PerHourUSD: 5}
 	}

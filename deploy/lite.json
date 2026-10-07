@@ -18,7 +18,7 @@
   ],
   "context": { "kind": "csv", "dir": "../out/context" },
   "budget": { "confirm_above_usd": 0.01, "max_per_query_usd": 1.0, "per_hour_usd": 5.0 },
-  "llm": { "provider": "anthropic", "model": "claude-sonnet-5-5", "api_key_env": "ANTHROPIC_API_KEY", "mode": "llm_first" },
+  "llm": { "provider": "anthropic", "model": "claude-sonnet-5-5", "api_key_env": "ANTHROPIC_API_KEY", "mode": "llm_first", "golden": "../testdata/nl/golden.json" },
   "server": { "addr": ":8080" },
   "agents": [
     { "name": "lumen-lite", "api_key": "agent-dev-key", "per_hour_usd": 1.0,
