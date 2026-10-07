@@ -70,6 +70,7 @@ One brute-force event carries a **prompt-injection user agent** (`InjectionUA` i
 This POC is built in guided mode: each module explains the concept, poses design questions, and sets acceptance criteria; you write the code.
 
 - [Module 0: OCSF from first principles](docs/learning/00-ocsf.md)
+- [Module 1: Building a presentable POC](docs/learning/01-presentable-poc.md): the five-act demo, ADRs, benchmarks, UI
 - [Module 2: The Catalog](docs/learning/02-catalog.md)
 
 ## Roadmap
