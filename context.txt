@@ -1,0 +1,167 @@
+FEDSEARCH-LITE: CONTEXT FOR CONTINUING WORK (e.g. from Claude Code CLI)
+=======================================================================
+Last updated: 2026-10-07. Repo: https://github.com/rk-the-dev/fedsearch (branch main)
+Owner: RK (Radhakishan Surwase). Purpose: a presentable POC of federated
+search over security telemetry, built to ramp up for DataBahn's federated
+search team (their products: Search, Reef, Lumen, MCP Hub).
+
+Start here: README.md, then docs/design/DESIGN.md (section 20 = as-built
+notes), docs/adr/0001..0006, docs/DEMO.md, docs/benchmarks.md.
+
+
+1. WHAT IT DOES
+---------------
+One question -> typed IR -> planner splits the time range into DISJOINT,
+partition-aligned slices across a hot tier (OpenSearch, last 30 days) and a
+cold tier (Parquet on S3/MinIO via embedded DuckDB, older than 23 days) ->
+engines run in parallel -> k-way merge + dedup + mergeable aggregates ->
+IP enrichment "as of" event time (Postgres temporal table or CSV) ->
+console (SSE), CLI, MCP server for agents, audit log.
+
+Test data (cmd/datagen, seed 42, anchored to today): 180 days of OCSF
+authentication + network_activity events with one scripted attack:
+  recon (-45d, cold only) -> brute force svc_backup (-27d, overlap window,
+  one failure carries a prompt-injection user agent) -> lateral movement
+  from 10.20.4.17 to db-prod-01 (that IP was lt-ankit-042 then, is
+  lt-meera-118 today) -> exfil ~4.2 GB from 10.20.6.88 (-10d, hot only).
+Ground truth: out/ground_truth.json. e2e tests assert exact numbers:
+  brute force = 40 (naive mode = 80), recon = 300, exfil flows = 30,
+  as-of host = lt-ankit-042.
+
+
+2. MODES AND COMMANDS
+---------------------
+Lite (no Docker; deploy/lite.json): hot tier = daily NDJSON read by DuckDB,
+cold = local Parquet, context = CSV.
+Docker (deploy/docker.json): OpenSearch :9200, MinIO :9000 (bucket
+telemetry-archive/ocsf), Postgres :5432 db reef.
+
+  make gen            generate data into ./out
+  make test           unit + e2e (e2e needs `make gen`)
+  make run            console http://localhost:8080 (lite)
+  make up / verify    start + check Docker stack;  make run-docker
+  make demo / demo-docker     five-act terminal demo
+  make bench / bench-docker   writes bench/results/*.json, docs/benchmarks*.md
+  make mcp            MCP stdio server (FEDSEARCH_AGENT_KEY=agent-dev-key)
+  go run ./cmd/fedsearch catalog refresh | catalog show | ask "..." |
+                         plan '<IR>' | query '<IR>' | investigate <ip>
+  flags: -config deploy/docker.json, -naive (disable overlap ownership), -json
+
+Status as of this file: lite mode fully verified (all tests pass). Docker
+mode verified by RK on his machine: `make verify` matched ground truth and
+the server discovered 4 locations. LLM: RK added API credits; see section 6
+for the open issue.
+
+
+3. LAYOUT (internal/)
+---------------------
+  ir          typed query, validation (collects ALL problems), normalize, hash, Eval
+  schema      FieldType/Role (leaf); timex: half-open Range, AlignUp/Down
+  catalog     model, OCSF registry (declared bindings + enum transforms),
+              discovery: Parquet footers only (byte-counting ReaderAt, ETag
+              cache), NDJSON, OpenSearch (_cat/indices, _field_caps);
+              coverage, Overlaps, sanitized stats, ListLive (plan-time listing)
+  objstore    Local + S3 (aws-sdk-go-v2, path-style, ranged GETs)
+  planner     disjoint slices (most preferred tier owns overlap), pushdown vs
+              residual, compile; Naive flag for demos; ResidualAggregateError
+  compiler    sql.go (DuckDB over explicit file lists), dsl.go (OpenSearch,
+              search_after rows, composite aggs)
+  cost        Price, Apply (estimates per slice), Ledger, Check (budgets)
+  engine      async contract (Submit/Poll/Fetch/Cancel) + Runner;
+              engine/duckdb, engine/opensearch
+  exec        jobs, per-source semaphores, deadlines, cancellation, events,
+              JobView snapshots, injection flagging
+  merge       k-way time merge, O(1)-per-timestamp dedup, Groups merge
+  result      Row, Group, State (decomposable aggs), Finalize
+  enrich      as-of Context{as_of,current,changed}; Memory(CSV)/Postgres stores
+  nl          Translator (llm_first | cache_first | cache_only), golden cache
+              (testdata/nl/golden.json), repair loop (2 rounds), prompt.go,
+              anthropic.go (HTTP client, APIError, Permanent())
+  tools       governed agent tools: catalog_describe, search_plan, search_run,
+              context_lookup; principals, budgets, audit, untrusted envelopes,
+              citations (job/location/event_id)
+  investigate playbook.go (deterministic, default), agent.go (LLM tool loop)
+  mcp         JSON-RPC 2.0 over stdio, protocol 2025-06-18
+  api, web    REST + SSE; embedded console (static/index.html, app.js, style.css)
+  service     facade used by api/cli/mcp/tests; audit (JSONL); guard (injection
+              heuristics); config; osclient
+cmd/: datagen, server, fedsearch (CLI), mcp, demo, bench
+internal/e2e: lite-mode ground-truth tests (also MCP + playbook tests)
+
+
+4. INVARIANTS (do not break)
+----------------------------
+- Slices never overlap in time; aggregates are only exact because of this.
+  Row dedup by event_id is defense in depth (nonzero counter = slicing bug).
+- No engine ever runs text an LLM wrote. LLM output -> IR -> ir.Validate.
+- Residual (post-fetch) predicates allowed for rows, rejected for aggregates.
+- Enrichment is as-of event time; "current" exists only to show the trap.
+- Telemetry is untrusted: free_text fields are flagged; agent-facing copies
+  withhold suspicious values (guard.ForAgent); suspicious samples never reach
+  prompts. Agent authority comes only from the tools policy layer.
+- Planning (/api/plan) is free and side-effect free; cost shown before Run.
+- All dynamic text in app.js goes through esc()/textContent (XSS: log data
+  is attacker-controlled).
+
+
+5. BUILD ENVIRONMENT NOTES
+-------------------------
+- Go 1.24+, cgo required (github.com/marcboeker/go-duckdb v1.8.5, DuckDB 1.1.3).
+- go.mod has `replace golang.org/x/* => github.com/golang/*` lines because
+  the original build sandbox could not reach golang.org. Safe to remove +
+  `go mod tidy` on a normal machine.
+- Docker mode: DuckDB installs the httpfs extension on first use (internet).
+- Postgres seed loads only on a fresh volume: `make reset && make up` after
+  regenerating data.
+- Commit trailer convention used so far:
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+
+6. OPEN ISSUE (next task): LLM 400 with reasoning models
+--------------------------------------------------------
+With model "claude-sonnet-5-5" (deploy/*.json llm.model) the API returns:
+  400 invalid_request_error: tool_choice: type "tool" and "any" are not
+  supported for this model.
+Cause: internal/nl/anthropic.go forces {"tool_choice":{"type":"tool","name":
+"emit_query"}} and sends "temperature": 0. Models that think before
+answering reject forced tool choice (and may reject non-default
+temperature), and they require their assistant content (thinking blocks
+with signatures) to be sent back VERBATIM on follow-up turns.
+
+Planned fix (not started):
+  a) New package internal/llmapi: one Messages client shared by nl and
+     investigate. It learns compat flags from 400 errors and retries once:
+       message mentions "tool_choice"  -> stop forcing; use {"type":"auto"}
+       message mentions "temperature"  -> omit temperature
+     Move APIError/ParseAPIError/Permanent there (keep nl aliases).
+  b) nl.Anthropic.EmitQuery: with auto tool choice, if the reply has no
+     emit_query tool_use, send one follow-up turn ("Call the emit_query tool
+     now with your answer") before failing. System prompt already says to
+     always answer via emit_query.
+  c) Preserve assistant content verbatim: ToolCall gains Raw []json.RawMessage
+     (the full assistant content); nl.Message gains `Raw []json.RawMessage
+     json:"-"` with a MarshalJSON that emits Raw when set; viaLLM's repair
+     turn uses Raw instead of rebuilding a tool_use block.
+  d) investigate/agent.go: keep each assistant turn's content as
+     []json.RawMessage and replay it unchanged; parse a copy to find tool_use
+     blocks. Drop temperature per compat flags.
+  e) Tests: fake HTTP server returning the tool_choice 400 then a thinking +
+     tool_use reply; assert fallback to auto, raw content replayed, and that
+     the existing TestRepairLoop / TestPermanentLLMErrorDisablesLLM still pass.
+  Workaround meanwhile: set llm.model to a model that supports forced tool
+  choice, or llm.mode "cache_only" (golden answers only).
+
+Also already handled: permanent errors (401/403, 400 credit/billing) switch
+the LLM off for the process (nl.Translator.disabled, Status() shown in the
+console pill); questions then use the golden set.
+
+
+7. OTHER IDEAS / BACKLOG
+------------------------
+- Run `make bench-docker` and commit docs/benchmarks-docker.md.
+- With a working LLM, `make bench` also scores NL -> IR on the 16-question
+  golden set (sameMeaning in cmd/bench).
+- IR extension: sequence/correlation operator ("A then B within N minutes").
+- Iceberg manifests instead of listing; event-driven catalog refresh.
+- Learning modules in docs/learning (00 OCSF, 01 presentable POC, 02 catalog)
+  were written for guided mode; RK later asked for a full build.
