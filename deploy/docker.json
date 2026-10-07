@@ -1,0 +1,29 @@
+{
+  "data_dir": "../.fedsearch/docker",
+  "sources": [
+    {
+      "name": "hot", "kind": "opensearch", "tier": "hot", "preference": 1, "live": true,
+      "url": "http://localhost:9200",
+      "index_fmt": "ocsf-{dataset}-",
+      "datasets": ["authentication", "network_activity"],
+      "cost": { "kind": "per_gb_scanned", "rate": 0.005 },
+      "timeout_sec": 5, "max_concurrency": 4
+    },
+    {
+      "name": "cold", "kind": "parquet", "tier": "cold", "preference": 2,
+      "root": "s3://telemetry-archive/ocsf",
+      "s3": { "endpoint": "localhost:9000", "region": "us-east-1", "access_key": "fedsearch", "secret_key": "fedsearch-secret", "use_ssl": false },
+      "datasets": ["authentication", "network_activity"],
+      "cost": { "kind": "per_tb_scanned", "rate": 5.0 },
+      "timeout_sec": 60, "max_concurrency": 2
+    }
+  ],
+  "context": { "kind": "postgres", "dsn": "postgres://fedsearch:fedsearch@localhost:5432/reef?sslmode=disable" },
+  "budget": { "confirm_above_usd": 0.01, "max_per_query_usd": 1.0, "per_hour_usd": 5.0 },
+  "llm": { "provider": "anthropic", "model": "claude-sonnet-5-5", "api_key_env": "ANTHROPIC_API_KEY", "mode": "llm_first" },
+  "server": { "addr": ":8080" },
+  "agents": [
+    { "name": "lumen-lite", "api_key": "agent-dev-key", "per_hour_usd": 1.0,
+      "allowed_tools": ["catalog_describe", "search_plan", "search_run", "context_lookup"] }
+  ]
+}

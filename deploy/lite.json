@@ -1,0 +1,27 @@
+{
+  "data_dir": "../.fedsearch/lite",
+  "sources": [
+    {
+      "name": "hot", "kind": "ndjson", "tier": "hot", "preference": 1, "live": true,
+      "root": "../out/hot",
+      "datasets": ["authentication", "network_activity"],
+      "cost": { "kind": "per_gb_scanned", "rate": 0.005 },
+      "timeout_sec": 30, "max_concurrency": 2
+    },
+    {
+      "name": "cold", "kind": "parquet", "tier": "cold", "preference": 2,
+      "root": "../out/cold",
+      "datasets": ["authentication", "network_activity"],
+      "cost": { "kind": "per_tb_scanned", "rate": 5.0 },
+      "timeout_sec": 60, "max_concurrency": 2
+    }
+  ],
+  "context": { "kind": "csv", "dir": "../out/context" },
+  "budget": { "confirm_above_usd": 0.01, "max_per_query_usd": 1.0, "per_hour_usd": 5.0 },
+  "llm": { "provider": "anthropic", "model": "claude-sonnet-5-5", "api_key_env": "ANTHROPIC_API_KEY", "mode": "llm_first" },
+  "server": { "addr": ":8080" },
+  "agents": [
+    { "name": "lumen-lite", "api_key": "agent-dev-key", "per_hour_usd": 1.0,
+      "allowed_tools": ["catalog_describe", "search_plan", "search_run", "context_lookup"] }
+  ]
+}
