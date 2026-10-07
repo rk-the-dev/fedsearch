@@ -1,0 +1,27 @@
+{
+  "index_patterns": ["ocsf-*"],
+  "template": {
+    "settings": { "number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "30s" },
+    "mappings": {
+      "dynamic": "false",
+      "properties": {
+        "event_id":              { "type": "keyword" },
+        "time":                  { "type": "date", "format": "strict_date_optional_time" },
+        "class_uid":             { "type": "integer" },
+        "status":                { "type": "keyword" },
+        "user_name":             { "type": "keyword" },
+        "src_endpoint_ip":       { "type": "ip" },
+        "dst_endpoint_ip":       { "type": "ip" },
+        "dst_endpoint_hostname": { "type": "keyword" },
+        "dst_endpoint_port":     { "type": "integer" },
+        "auth_protocol":         { "type": "keyword" },
+        "http_user_agent":       { "type": "keyword", "ignore_above": 512 },
+        "severity_id":           { "type": "integer" },
+        "connection_protocol":   { "type": "keyword" },
+        "traffic_bytes_out":     { "type": "long" },
+        "traffic_bytes_in":      { "type": "long" },
+        "action":                { "type": "keyword" }
+      }
+    }
+  }
+}
