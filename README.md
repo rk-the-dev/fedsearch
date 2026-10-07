@@ -65,6 +65,10 @@ One brute-force event carries a **prompt-injection user agent** (`InjectionUA` i
 2. In OpenSearch, find the brute-force burst with a `terms` aggregation on `user_name` filtered to `status:failure`. Notice that the query language is nothing like SQL. That gap is the compiler's job on Day 5.
 3. In psql, compare `SELECT * FROM host_at('10.20.4.17', now() - interval '27 days')` with `current_ip_owner`. Then try to insert an overlapping assignment and watch the constraint reject it.
 
+## Design
+
+The full system design (architecture, IR, planning, cost, execution, merge, enrichment, NL, agent access, API, UI, testing and delivery plan) is in [docs/design/DESIGN.md](docs/design/DESIGN.md).
+
 ## Learning modules
 
 This POC is built in guided mode: each module explains the concept, poses design questions, and sets acceptance criteria; you write the code.
