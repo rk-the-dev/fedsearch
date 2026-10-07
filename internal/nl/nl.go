@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rksurwase/fedsearch/internal/catalog"
@@ -37,9 +38,12 @@ type Attempt struct {
 
 // Translator holds the LLM client and the golden cache.
 type Translator struct {
-	Cfg    config.LLM
-	LLM    LLM
-	Golden *Golden
+	Cfg config.LLM
+	LLM LLM
+	// disabled holds the reason the LLM was switched off after a permanent
+	// error (no credits, bad key); the translator then answers from the cache.
+	disabled atomic.Pointer[string]
+	Golden   *Golden
 	// Prepare normalizes and validates against the live catalog.
 	Prepare func(*ir.Query) error
 	Catalog func() *catalog.Catalog
@@ -64,7 +68,18 @@ func New(cfg config.LLM, golden *Golden, cat func() *catalog.Catalog, prepare fu
 }
 
 // Available reports whether an LLM is configured.
-func (t *Translator) Available() bool { return t.LLM != nil }
+func (t *Translator) Available() bool { return t.LLM != nil && t.disabled.Load() == nil }
+
+// Status explains LLM availability for the UI.
+func (t *Translator) Status() string {
+	switch {
+	case t.LLM == nil:
+		return "no API key configured"
+	case t.disabled.Load() != nil:
+		return *t.disabled.Load()
+	}
+	return "connected"
+}
 
 func (t *Translator) Translate(ctx context.Context, question string) (*Translation, error) {
 	start := time.Now()
@@ -90,7 +105,7 @@ func (t *Translator) Translate(ctx context.Context, question string) (*Translati
 		}
 		return &Translation{Question: question, Query: &q, Explanation: e.Explanation, Source: "cache", LatencyMS: time.Since(start).Milliseconds()}, nil
 	}
-	if mode == "cache_only" || t.LLM == nil {
+	if mode == "cache_only" || !t.Available() {
 		return fromCache()
 	}
 	if mode == "cache_first" {
@@ -99,6 +114,10 @@ func (t *Translator) Translate(ctx context.Context, question string) (*Translati
 		}
 	}
 	tr, err := t.viaLLM(ctx, question)
+	if ae := (*APIError)(nil); errors.As(err, &ae) && ae.Permanent() {
+		reason := "LLM disabled: " + ae.Message
+		t.disabled.Store(&reason) // stop calling an API that cannot succeed
+	}
 	if err != nil {
 		// Never strand the user: fall back to the golden answer if there is one.
 		if c, cerr := fromCache(); cerr == nil {
@@ -215,7 +234,7 @@ func Normalize(q string) string {
 
 // APIKey returns the configured Anthropic key (for the agent mode), or "".
 func (t *Translator) APIKey() string {
-	if a, ok := t.LLM.(*Anthropic); ok {
+	if a, ok := t.LLM.(*Anthropic); ok && t.Available() {
 		return a.APIKey
 	}
 	return ""

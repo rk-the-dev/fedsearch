@@ -83,7 +83,7 @@ func (a *Anthropic) EmitQuery(ctx context.Context, system string, conv []Message
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("anthropic %d: %s", resp.StatusCode, truncate(string(data), 300))
+		return nil, ParseAPIError(resp.StatusCode, data)
 	}
 	var out struct {
 		Content []Block `json:"content"`
@@ -104,4 +104,42 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "…"
+}
+
+// APIError is an error response from the Anthropic API.
+type APIError struct {
+	Status  int
+	Type    string
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("anthropic %d %s: %s", e.Status, e.Type, e.Message)
+}
+
+// Permanent reports errors that retrying cannot fix: bad credentials, no
+// credits, or a disabled account. Rate limits and overloads are transient.
+func (e *APIError) Permanent() bool {
+	switch {
+	case e.Status == 401 || e.Status == 403:
+		return true
+	case e.Status == 400 && (strings.Contains(strings.ToLower(e.Message), "credit") || strings.Contains(strings.ToLower(e.Message), "billing")):
+		return true
+	}
+	return false
+}
+
+// ParseAPIError decodes the API's error envelope.
+func ParseAPIError(status int, body []byte) *APIError {
+	var env struct {
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	e := &APIError{Status: status, Message: truncate(string(body), 300)}
+	if json.Unmarshal(body, &env) == nil && env.Error.Message != "" {
+		e.Type, e.Message = env.Error.Type, env.Error.Message
+	}
+	return e
 }

@@ -73,7 +73,7 @@ function strip({ from, to, lanes, bands = [], now }) {
 // ---------- status bar ----------
 function renderStatus() {
   const c = state.catalog; if (!c) return;
-  $("#status").innerHTML = `<span class="pill">${esc(c.mode)} mode</span><span>Catalog refreshed ${esc(when(c.refreshed_at))} UTC</span><span class="pill">${c.llm_available ? "LLM connected" : "LLM offline: golden answers"}</span>`;
+  $("#status").innerHTML = `<span class="pill">${esc(c.mode)} mode</span><span>Catalog refreshed ${esc(when(c.refreshed_at))} UTC</span><span class="pill" title="${esc(c.llm_status || "")}">${c.llm_available ? "LLM connected" : "LLM offline: golden answers"}</span>`;
   $("#mode-agent").disabled = !c.llm_available;
 }
 
@@ -189,8 +189,9 @@ async function translate() {
     renderAttempts(tr.attempts);
     await plan();
   } catch (err) {
-    $("#ir-errors").innerHTML = `<div class="note crit">${esc(err.message)}</div>`;
+    $("#ir-errors").innerHTML = `<div class="note crit">${esc(err.message)}. Pick one of the example questions above (they work without the LLM) or edit the query directly.</div>`;
     renderAttempts(err.data?.attempts);
+    loadCatalog().catch(() => {}); // refresh the LLM status pill
   } finally { btn.disabled = false; btn.textContent = "Translate"; }
 }
 

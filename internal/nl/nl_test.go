@@ -102,3 +102,34 @@ func TestPromptFencesCatalogAndOmitsSuspicious(t *testing.T) {
 		t.Fatal("suspicious samples must never reach the prompt")
 	}
 }
+
+type broke struct{ calls int }
+
+func (b *broke) EmitQuery(context.Context, string, []Message) (*ToolCall, error) {
+	b.calls++
+	return nil, ParseAPIError(400, []byte(`{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."}}`))
+}
+
+// A permanent API error (no credits, bad key) switches the LLM off once;
+// later questions go straight to the golden set without calling the API.
+func TestPermanentLLMErrorDisablesLLM(t *testing.T) {
+	g, _ := LoadGolden("../../testdata/nl/golden.json")
+	llm := &broke{}
+	tr := &Translator{Cfg: config.LLM{Mode: "llm_first"}, LLM: llm, Golden: g, Catalog: testCatalog, Prepare: prepare}
+	out, err := tr.Translate(context.Background(), "Show failed logins for svc_backup in the last 6 months")
+	if err != nil || out.Source != "cache" {
+		t.Fatalf("first call: %+v %v", out, err)
+	}
+	if tr.Available() || !strings.Contains(tr.Status(), "credit balance") {
+		t.Fatalf("status = %q", tr.Status())
+	}
+	if _, err := tr.Translate(context.Background(), "Failed logins in the last 24 hours"); err != nil {
+		t.Fatal(err)
+	}
+	if llm.calls != 1 {
+		t.Fatalf("API called %d times, want 1", llm.calls)
+	}
+	if tr.APIKey() != "" {
+		t.Fatal("agent mode must not get a key for a disabled LLM")
+	}
+}

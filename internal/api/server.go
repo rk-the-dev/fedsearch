@@ -92,6 +92,7 @@ type catalogView struct {
 	Effective    map[string]any               `json:"effective"`
 	Mode         string                       `json:"mode"`
 	LLM          bool                         `json:"llm_available"`
+	LLMStatus    string                       `json:"llm_status"`
 	Now          time.Time                    `json:"now"`
 	BudgetConfig any                          `json:"budget"`
 }
@@ -100,7 +101,7 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 	cat := s.Svc.Catalog()
 	now := s.Svc.Now()
 	v := catalogView{Catalog: cat, Overlaps: map[string][]catalog.Overlap{}, Effective: map[string]any{}, Mode: s.Mode,
-		LLM: s.Svc.NL.Available(), Now: now, BudgetConfig: s.Svc.Cfg.Budget}
+		LLM: s.Svc.NL.Available(), LLMStatus: s.Svc.NL.Status(), Now: now, BudgetConfig: s.Svc.Cfg.Budget}
 	for name := range cat.Datasets {
 		v.Overlaps[name] = cat.Overlaps(name)
 	}
@@ -293,7 +294,7 @@ func (s *Server) investigate(w http.ResponseWriter, r *http.Request) {
 	if in.Mode == "agent" {
 		key := s.Svc.NL.APIKey()
 		if key == "" {
-			writeJSON(w, 400, map[string]any{"error": "agent mode needs an LLM API key; use the playbook"})
+			writeJSON(w, 400, map[string]any{"error": "agent mode needs a working LLM (" + s.Svc.NL.Status() + "); use the playbook"})
 			return
 		}
 		a := &investigate.Agent{APIKey: key, Model: s.Svc.Cfg.LLM.Model, BaseURL: s.Svc.Cfg.LLM.BaseURL}

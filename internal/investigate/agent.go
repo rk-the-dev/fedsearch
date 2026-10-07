@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rksurwase/fedsearch/internal/nl"
 	"github.com/rksurwase/fedsearch/internal/tools"
 )
 
@@ -136,7 +137,7 @@ func (a *Agent) call(ctx context.Context, conv []agentMsg, defs []any) (*agentRe
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("anthropic %d: %s", resp.StatusCode, string(data))
+		return nil, nl.ParseAPIError(resp.StatusCode, data)
 	}
 	var out agentResp
 	return &out, json.Unmarshal(data, &out)
